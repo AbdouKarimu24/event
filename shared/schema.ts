@@ -49,13 +49,14 @@ export const events = pgTable("events", {
   venue: varchar("venue", { length: 255 }).notNull(),
   address: varchar("address", { length: 500 }),
   city: varchar("city", { length: 100 }),
-  state: varchar("state", { length: 100 }),
-  country: varchar("country", { length: 100 }),
+  region: varchar("region", { length: 100 }), // Cameroon regions
+  country: varchar("country", { length: 100 }).default("Cameroon"),
   eventDate: date("event_date").notNull(),
   startTime: time("start_time").notNull(),
   endTime: time("end_time"),
   imageUrl: varchar("image_url"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 10 }).default("XAF"), // Central African Franc
   maxAttendees: integer("max_attendees"),
   availableTickets: integer("available_tickets"),
   status: varchar("status").default("active"), // active, cancelled, sold_out
@@ -70,11 +71,15 @@ export const bookings = pgTable("bookings", {
   eventId: integer("event_id").references(() => events.id).notNull(),
   quantity: integer("quantity").notNull(),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 10 }).default("XAF"),
   attendeeName: varchar("attendee_name", { length: 255 }).notNull(),
   attendeeEmail: varchar("attendee_email", { length: 255 }).notNull(),
   attendeePhone: varchar("attendee_phone", { length: 20 }),
-  status: varchar("status").default("confirmed"), // confirmed, cancelled
+  status: varchar("status").default("confirmed"), // confirmed, cancelled, attended
   bookingReference: varchar("booking_reference").unique(),
+  qrCode: text("qr_code"), // QR code data for ticket verification
+  ticketNumber: varchar("ticket_number", { length: 50 }).unique(), // Unique ticket identifier
+  checkInTime: timestamp("check_in_time"), // When the ticket was scanned
   createdAt: timestamp("created_at").defaultNow(),
 });
 
