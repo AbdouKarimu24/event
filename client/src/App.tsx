@@ -12,6 +12,7 @@ import Cart from "@/pages/cart";
 import Dashboard from "@/pages/dashboard";
 import AdminEvents from "@/pages/admin/events";
 import AdminBookings from "@/pages/admin/bookings";
+import AdminAnalytics from "@/pages/admin/analytics";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -28,6 +29,7 @@ function Router() {
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/admin/events" component={AdminEvents} />
           <Route path="/admin/bookings" component={AdminBookings} />
+          <Route path="/admin/analytics" component={AdminAnalytics} />
         </>
       )}
       <Route component={NotFound} />

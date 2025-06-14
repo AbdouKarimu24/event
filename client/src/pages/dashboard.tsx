@@ -18,6 +18,43 @@ export default function Dashboard() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const [isCartOpen, setIsCartOpen] = useState(false);
 
+  const downloadTicketPDF = async (bookingId: number) => {
+    try {
+      const response = await fetch(`/api/bookings/${bookingId}/pdf`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/pdf',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download ticket');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `ticket-${bookingId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Ticket téléchargé",
+        description: "Votre billet PDF avec QR code a été téléchargé avec succès.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur de téléchargement",
+        description: "Impossible de télécharger le billet. Veuillez réessayer.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const { data: bookings = [], isLoading } = useQuery<BookingWithEvent[]>({
     queryKey: ["/api/bookings"],
     enabled: !!isAuthenticated,

@@ -382,6 +382,15 @@ export class DatabaseStorage implements IStorage {
     return updatedBooking;
   }
 
+  async updateBookingQRCode(id: number, qrCode: string): Promise<Booking> {
+    const [updatedBooking] = await db
+      .update(bookings)
+      .set({ qrCode })
+      .where(eq(bookings.id, id))
+      .returning();
+    return updatedBooking;
+  }
+
   // Cart operations
   async getUserCartItems(userId: string): Promise<CartItemWithEvent[]> {
     const result = await db
