@@ -2,7 +2,11 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertEventSchema, insertBookingSchema, insertCartItemSchema } from "@shared/schema";
+import { QRCodeService } from "./services/qrCodeService";
+import { EmailService } from "./services/emailService";
+import { PDFService } from "./services/pdfService";
+import { AnalyticsService } from "./services/analyticsService";
+import { insertBookingSchema, insertEventSchema, insertCartItemSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -142,6 +146,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const booking = await storage.createBooking(bookingData);
+      const bookingWithEvent = { ...booking, event };
+
+      // Generate QR code for the ticket
+      try {
+        const qrCode = await QRCodeService.generateQRCode({
+          bookingId: booking.id,
+          ticketNumber: booking.ticketNumber || `TK${booking.id}`,
+          eventTitle: event.title,
+          venue: event.venue,
+          eventDate: event.eventDate,
+          attendeeName: booking.attendeeName,
+          quantity: booking.quantity
+        });
+
+        // Update booking with QR code
+        await storage.updateBookingQRCode(booking.id, qrCode);
+
+        // Send confirmation email
+        await EmailService.sendBookingConfirmation(bookingWithEvent, qrCode);
+      } catch (emailError) {
+        console.error("Error with QR/email:", emailError);
+      }
       
       // Update available tickets
       if (event.availableTickets) {
@@ -262,6 +288,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error clearing cart:", error);
       res.status(500).json({ message: "Failed to clear cart" });
+    }
+  });
+
+  // Analytics routes
+  app.get('/api/analytics', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied. Admin role required." });
+      }
+
+      const { startDate, endDate } = req.query;
+      const analytics = await AnalyticsService.getEventAnalytics(
+        startDate ? new Date(startDate) : undefined,
+        endDate ? new Date(endDate) : undefined
+      );
+      
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching analytics:", error);
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
+  // Cameroon regions and cities data
+  app.get('/api/cameroon/regions', async (req, res) => {
+    try {
+      const regions = await AnalyticsService.getCameroonRegionsData();
+      res.json(regions);
+    } catch (error) {
+      console.error("Error fetching regions:", error);
+      res.status(500).json({ message: "Failed to fetch regions" });
+    }
+  });
+
+  app.get('/api/cameroon/cities', async (req, res) => {
+    try {
+      const cities = await AnalyticsService.getCameroonCitiesData();
+      res.json(cities);
+    } catch (error) {
+      console.error("Error fetching cities:", error);
+      res.status(500).json({ message: "Failed to fetch cities" });
+    }
+  });
+
+  // PDF ticket download
+  app.get('/api/bookings/:id/pdf', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const bookingId = parseInt(req.params.id);
+      const bookings = await storage.getUserBookings(userId);
+      const booking = bookings.find(b => b.id === bookingId);
+      
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+
+      const qrCode = booking.qrCode || await QRCodeService.generateQRCode({
+        bookingId: booking.id,
+        ticketNumber: booking.ticketNumber || `TK${booking.id}`,
+        eventTitle: booking.event.title,
+        venue: booking.event.venue,
+        eventDate: booking.event.eventDate,
+        attendeeName: booking.attendeeName,
+        quantity: booking.quantity
+      });
+
+      const pdfBuffer = await PDFService.generateTicketPDF(booking, qrCode);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="ticket-${booking.ticketNumber || booking.id}.pdf"`);
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      res.status(500).json({ message: "Failed to generate PDF ticket" });
+    }
+  });
+
+  // QR code verification
+  app.get('/api/verify-ticket/:ticketNumber', async (req, res) => {
+    try {
+      const { ticketNumber } = req.params;
+      const verification = await QRCodeService.verifyTicket(ticketNumber);
+      res.json(verification);
+    } catch (error) {
+      console.error("Error verifying ticket:", error);
+      res.status(500).json({ message: "Failed to verify ticket" });
     }
   });
 

@@ -42,6 +42,7 @@ export interface IStorage {
   getEventBookings(eventId: number): Promise<BookingWithEvent[]>;
   getAllBookings(): Promise<BookingWithEvent[]>;
   updateBookingStatus(id: number, status: string): Promise<Booking>;
+  updateBookingQRCode(id: number, qrCode: string): Promise<Booking>;
 
   // Cart operations
   getUserCartItems(userId: string): Promise<CartItemWithEvent[]>;
