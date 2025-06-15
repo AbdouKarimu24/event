@@ -8,7 +8,7 @@ import { PDFService } from "./services/pdfService";
 import { AnalyticsService } from "./services/analyticsService";
 import { insertBookingSchema, insertEventSchema, insertCartItemSchema } from "@shared/schema";
 import { z } from "zod";
-import { db } from "./db";
+import { db, pool } from "./db";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware

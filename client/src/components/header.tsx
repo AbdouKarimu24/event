@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, Bell, ShoppingCart, ChevronDown, User, Settings, LogOut, Shield } from "lucide-react";
+import { Search, Bell, ShoppingCart, ChevronDown, User, Settings, LogOut, Shield, Database } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { User as UserType, CartItemWithEvent } from "@shared/schema";
 
@@ -112,6 +112,12 @@ export default function Header({ onCartToggle }: HeaderProps) {
                       <Link href="/admin/events" className="flex items-center">
                         <Shield className="mr-2 h-4 w-4" />
                         Admin Panel
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin/database" className="flex items-center">
+                        <Database className="mr-2 h-4 w-4" />
+                        Database Admin
                       </Link>
                     </DropdownMenuItem>
                   </>
