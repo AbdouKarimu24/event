@@ -8,6 +8,7 @@ import { PDFService } from "./services/pdfService";
 import { AnalyticsService } from "./services/analyticsService";
 import { insertBookingSchema, insertEventSchema, insertCartItemSchema } from "@shared/schema";
 import { z } from "zod";
+import { db } from "./db";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -377,6 +378,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error verifying ticket:", error);
       res.status(500).json({ message: "Failed to verify ticket" });
+    }
+  });
+
+  // Database administration routes
+  app.get('/api/admin/database/tables', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied. Admin role required." });
+      }
+
+      const result = await db.execute(`
+        SELECT 
+          tablename as table_name,
+          COALESCE(n_tup_ins + n_tup_upd + n_tup_del, 0) as row_count,
+          pg_size_pretty(pg_total_relation_size('public.'||tablename)) as table_size
+        FROM pg_tables 
+        LEFT JOIN pg_stat_user_tables ON pg_tables.tablename = pg_stat_user_tables.relname
+        WHERE schemaname = 'public'
+        ORDER BY tablename
+      `);
+      
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching tables:", error);
+      res.status(500).json({ message: "Failed to fetch tables" });
+    }
+  });
+
+  app.get('/api/admin/database/table/:tableName', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied. Admin role required." });
+      }
+
+      const tableName = req.params.tableName;
+      
+      // Validate table name to prevent SQL injection
+      const validTables = ['users', 'events', 'bookings', 'cart_items', 'sessions'];
+      if (!validTables.includes(tableName)) {
+        return res.status(400).json({ message: "Invalid table name" });
+      }
+
+      const result = await db.execute(`SELECT * FROM ${tableName} LIMIT 50`);
+      
+      const columns = result.fields?.map(field => field.name) || [];
+      const rows = result.rows || [];
+      
+      res.json({ columns, rows });
+    } catch (error) {
+      console.error("Error fetching table data:", error);
+      res.status(500).json({ message: "Failed to fetch table data" });
+    }
+  });
+
+  app.post('/api/admin/database/execute', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied. Admin role required." });
+      }
+
+      const { query } = req.body;
+      
+      if (!query || typeof query !== 'string') {
+        return res.status(400).json({ message: "Query is required" });
+      }
+
+      // Basic safety checks
+      const dangerousKeywords = ['DROP', 'TRUNCATE', 'ALTER', 'CREATE', 'GRANT', 'REVOKE'];
+      const upperQuery = query.toUpperCase();
+      
+      for (const keyword of dangerousKeywords) {
+        if (upperQuery.includes(keyword)) {
+          return res.status(400).json({ 
+            message: `Dangerous operation detected: ${keyword}. Only SELECT, INSERT, UPDATE, DELETE queries are allowed.` 
+          });
+        }
+      }
+
+      const startTime = Date.now();
+      const result = await db.execute(query);
+      const executionTime = Date.now() - startTime;
+      
+      const columns = result.fields?.map(field => field.name) || [];
+      const rows = result.rows || [];
+      const rowCount = result.rowCount || 0;
+      
+      res.json({ columns, rows, rowCount, executionTime });
+    } catch (error) {
+      console.error("Error executing query:", error);
+      res.status(500).json({ message: error.message || "Failed to execute query" });
     }
   });
 

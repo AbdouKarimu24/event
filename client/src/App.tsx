@@ -13,6 +13,7 @@ import Dashboard from "@/pages/dashboard";
 import AdminEvents from "@/pages/admin/events";
 import AdminBookings from "@/pages/admin/bookings";
 import AdminAnalytics from "@/pages/admin/analytics";
+import DatabaseAdmin from "@/pages/admin/database";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -30,6 +31,7 @@ function Router() {
           <Route path="/admin/events" component={AdminEvents} />
           <Route path="/admin/bookings" component={AdminBookings} />
           <Route path="/admin/analytics" component={AdminAnalytics} />
+          <Route path="/admin/database" component={DatabaseAdmin} />
         </>
       )}
       <Route component={NotFound} />
