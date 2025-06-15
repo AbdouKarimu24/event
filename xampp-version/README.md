@@ -1,172 +1,123 @@
-# EventZon - XAMPP Event Booking System
+# EventZon - XAMPP Version
 
-## Complete PHP/MySQL Event Booking Platform
+## Installation Instructions
 
-This is a complete event booking system built with PHP and MySQL, designed to run on XAMPP. It includes all the features from your original requirements:
+### Prerequisites
+- XAMPP with PHP 7.4+ and MySQL 5.7+
+- Web browser (Chrome, Firefox, Safari, Edge)
 
-### ✅ Features Implemented
+### Setup Steps
 
-1. **User Authentication** - Login, registration, and session management
-2. **Event Listings** - Browse events with search and filters
-3. **Search Functionality** - Search by name, location, date, category
-4. **Event Details** - Detailed event information pages
-5. **Booking Cart** - Add/remove items, manage cart
-6. **Checkout Process** - Complete booking system
-7. **Booking History** - User dashboard with booking management
-8. **Admin Panel** - Complete administration interface
-9. **Database Admin** - phpMyAdmin-like interface
+1. **Install XAMPP**
+   - Download XAMPP from https://www.apachefriends.org/
+   - Install XAMPP to `C:\xampp` (Windows) or `/Applications/XAMPP` (Mac)
 
-### 🚀 XAMPP Installation Instructions
+2. **Copy Files**
+   - Copy the entire `xampp-version` folder to `C:\xampp\htdocs\eventzon`
+   - The structure should be: `C:\xampp\htdocs\eventzon\index.php`
 
-#### Step 1: Install XAMPP
-1. Download XAMPP from https://www.apachefriends.org/
-2. Install XAMPP on your computer
-3. Start Apache and MySQL services from XAMPP Control Panel
+3. **Start Services**
+   - Open XAMPP Control Panel
+   - Start Apache and MySQL services
 
-#### Step 2: Setup the Application
-1. Copy the entire `xampp-version` folder contents to `C:\xampp\htdocs\eventzon\`
-2. Open your web browser and go to `http://localhost/eventzon/`
-3. The application will automatically create the database and tables
+4. **Database Setup**
+   - Open phpMyAdmin: http://localhost/phpmyadmin
+   - The database and tables will be created automatically when you first visit the site
+   - Or manually create database named `eventzon`
 
-#### Step 3: Access the System
-- **Website**: http://localhost/eventzon/
-- **Admin Panel**: http://localhost/eventzon/admin/
-- **Database Admin**: http://localhost/eventzon/admin/database.php
-- **phpMyAdmin**: http://localhost/phpmyadmin/ (traditional phpMyAdmin)
+5. **Access Application**
+   - Open browser and go to: http://localhost/eventzon
+   - The application should load with the homepage
 
-#### Step 4: Default Login Credentials
-- **Admin Account**: 
-  - Email: admin@eventzon.com
-  - Password: admin123
+### Default Configuration
 
-### 📁 File Structure
+- **Database Host**: localhost
+- **Database Name**: eventzon  
+- **Database User**: root
+- **Database Password**: (empty)
+
+### File Structure
 
 ```
-xampp-version/
+C:\xampp\htdocs\eventzon\
+├── index.php                 # Main entry point
 ├── config/
 │   └── database.php          # Database configuration
 ├── includes/
-│   └── auth.php             # Authentication functions
-├── admin/
-│   ├── index.php            # Admin dashboard
-│   ├── database.php         # Database administration
-│   ├── events.php           # Event management
-│   ├── bookings.php         # Booking management
-│   └── users.php            # User management
+│   ├── header.php           # Site header
+│   ├── footer.php           # Site footer
+│   └── functions.php        # Core functions
+├── pages/
+│   ├── home.php             # Homepage
+│   ├── events.php           # Events listing
+│   ├── event-details.php    # Event details
+│   ├── login.php            # User login
+│   ├── register.php         # User registration
+│   ├── dashboard.php        # User dashboard
+│   ├── cart.php             # Shopping cart
+│   └── 404.php              # Error page
+├── auth/
+│   └── logout.php           # Logout handler
 ├── assets/
 │   ├── css/
-│   │   └── style.css        # Main stylesheet
-│   ├── js/
-│   │   └── main.js          # JavaScript functionality
-│   └── images/              # Image assets
-├── index.php                # Main homepage
-├── login.php                # User login
-├── register.php             # User registration
-├── event_details.php        # Event details page
-├── cart.php                 # Shopping cart
-├── dashboard.php            # User dashboard
-├── checkout.php             # Checkout process
-└── logout.php               # Logout handler
+│   │   └── style.css        # Custom styles
+│   └── js/
+│       └── script.js        # JavaScript functions
+└── README.md                # This file
 ```
 
-### 🗄️ Database Schema
+### Features
 
-The system automatically creates these tables:
-- `users` - User accounts and profiles
-- `events` - Event information
-- `bookings` - Ticket bookings and reservations
-- `cart_items` - Shopping cart items
+- **Event Management**: Browse, search, and filter events
+- **User Authentication**: Register, login, logout
+- **Shopping Cart**: Add events to cart and checkout
+- **Responsive Design**: Works on desktop and mobile
+- **Secure**: Password hashing, input sanitization
+- **Database**: MySQL with PDO for security
 
-### 🔧 Configuration
+### Admin Access
 
-#### Database Settings (config/database.php)
-```php
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'eventzon_db');
-```
+To create an admin user:
+1. Register a normal account
+2. Go to phpMyAdmin
+3. Open the `users` table
+4. Change the `role` field from 'user' to 'admin' for your account
 
-#### XAMPP Requirements
-- PHP 7.4 or higher
-- MySQL 5.7 or higher
-- Apache Web Server
+### Sample Data
 
-### 🎯 Key Features
+To add sample events:
+1. Login as admin
+2. Go to dashboard
+3. Use the admin panel to create events
 
-#### Database Administration Interface
-- **SQL Query Executor** - Run custom SQL queries safely
-- **Table Browser** - View and manage database tables
-- **Safety Features** - Prevents dangerous operations
-- **Sample Queries** - Pre-built queries for common tasks
+### Troubleshooting
 
-#### Admin Panel Features
-- **Dashboard** - Overview statistics and charts
-- **Event Management** - Create, edit, delete events
-- **Booking Management** - View and manage all bookings
-- **User Management** - Manage user accounts
-- **Analytics** - Revenue and booking statistics
+**Database Connection Error**
+- Ensure MySQL service is running in XAMPP
+- Check database credentials in `config/database.php`
 
-#### User Features
-- **Event Discovery** - Search and filter events
-- **Booking System** - Add to cart and checkout
-- **User Dashboard** - View booking history
-- **Responsive Design** - Works on mobile and desktop
+**Page Not Found**
+- Verify files are in correct location: `C:\xampp\htdocs\eventzon\`
+- Check Apache service is running
 
-### 🔒 Security Features
+**Functions Not Found**
+- Ensure `includes/functions.php` is being loaded
+- Check file permissions
 
-- Password hashing with PHP's `password_hash()`
-- SQL injection prevention with prepared statements
-- Session-based authentication
-- Input validation and sanitization
-- CSRF protection on forms
-- Admin-only access controls
+### Security Notes
 
-### 📱 Responsive Design
+- Change default database credentials for production
+- Enable password protection for phpMyAdmin
+- Use HTTPS in production environment
+- Regular backup of database
 
-The interface is fully responsive and works on:
-- Desktop computers
-- Tablets
-- Mobile phones
+### Support
 
-### 🎨 UI Components
+For issues or questions:
+- Check XAMPP documentation
+- Verify PHP and MySQL versions
+- Review error logs in XAMPP control panel
 
-- Modern Bootstrap-inspired design
-- FontAwesome icons
-- Gradient backgrounds
-- Card-based layouts
-- Mobile-friendly navigation
+### License
 
-### 📊 Database Administration
-
-The built-in database admin provides:
-- **Table browsing** - View all tables and their data
-- **SQL execution** - Run SELECT, INSERT, UPDATE, DELETE queries
-- **Safety checks** - Prevents dangerous operations like DROP TABLE
-- **Query samples** - Pre-built queries for common operations
-- **Table statistics** - Row counts and table sizes
-
-### 🚀 Getting Started
-
-1. Install XAMPP and start Apache + MySQL
-2. Copy files to `htdocs/eventzon/`
-3. Visit `http://localhost/eventzon/`
-4. Login with admin@eventzon.com / admin123
-5. Start managing events and bookings!
-
-### 📝 Notes
-
-- The database is automatically created on first visit
-- All tables are created with proper relationships
-- Default admin account is created automatically
-- The system includes sample data structure
-- Compatible with standard XAMPP installation
-
-### 🔗 Access Points
-
-- **Main Site**: http://localhost/eventzon/
-- **Admin Dashboard**: http://localhost/eventzon/admin/
-- **Database Admin**: http://localhost/eventzon/admin/database.php
-- **Classic phpMyAdmin**: http://localhost/phpmyadmin/
-
-This system provides the same functionality as your original React/Node.js version but runs entirely on XAMPP with PHP and MySQL!
+This EventZon XAMPP version is provided as-is for educational and development purposes.
