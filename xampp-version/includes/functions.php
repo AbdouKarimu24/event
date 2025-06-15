@@ -1,0 +1,215 @@
+<?php
+// Authentication functions
+function is_logged_in() {
+    return isset($_SESSION['user_id']);
+}
+
+function is_admin() {
+    return isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin';
+}
+
+function login_user($user) {
+    $_SESSION['user_id'] = $user['id'];
+    $_SESSION['user_name'] = $user['name'];
+    $_SESSION['user_email'] = $user['email'];
+    $_SESSION['user_role'] = $user['role'];
+}
+
+function logout_user() {
+    session_destroy();
+    header('Location: index.php?page=home');
+    exit;
+}
+
+// Event functions
+function get_events($filters = []) {
+    global $pdo;
+    
+    $sql = "SELECT e.*, u.name as organizer_name FROM events e 
+            LEFT JOIN users u ON e.organizer_id = u.id WHERE 1=1";
+    $params = [];
+    
+    if (!empty($filters['search'])) {
+        $sql .= " AND (e.title LIKE ? OR e.description LIKE ?)";
+        $params[] = '%' . $filters['search'] . '%';
+        $params[] = '%' . $filters['search'] . '%';
+    }
+    
+    if (!empty($filters['category'])) {
+        $sql .= " AND e.category = ?";
+        $params[] = $filters['category'];
+    }
+    
+    if (!empty($filters['city'])) {
+        $sql .= " AND e.city = ?";
+        $params[] = $filters['city'];
+    }
+    
+    if (!empty($filters['date'])) {
+        $sql .= " AND DATE(e.date) = ?";
+        $params[] = $filters['date'];
+    }
+    
+    $sql .= " ORDER BY e.date ASC";
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    return $stmt->fetchAll();
+}
+
+function get_event($id) {
+    global $pdo;
+    
+    $stmt = $pdo->prepare("SELECT e.*, u.name as organizer_name FROM events e 
+                          LEFT JOIN users u ON e.organizer_id = u.id WHERE e.id = ?");
+    $stmt->execute([$id]);
+    return $stmt->fetch();
+}
+
+function create_event($data) {
+    global $pdo;
+    
+    $sql = "INSERT INTO events (title, description, date, venue, price, available_tickets, 
+            category, city, region, image_url, organizer_id) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    
+    $stmt = $pdo->prepare($sql);
+    return $stmt->execute([
+        $data['title'], $data['description'], $data['date'], $data['venue'],
+        $data['price'], $data['available_tickets'], $data['category'],
+        $data['city'], $data['region'], $data['image_url'], $data['organizer_id']
+    ]);
+}
+
+// Cart functions
+function get_cart_items($user_id) {
+    global $pdo;
+    
+    $stmt = $pdo->prepare("SELECT c.*, e.title, e.price, e.image_url 
+                          FROM cart_items c 
+                          JOIN events e ON c.event_id = e.id 
+                          WHERE c.user_id = ?");
+    $stmt->execute([$user_id]);
+    return $stmt->fetchAll();
+}
+
+function add_to_cart($user_id, $event_id, $quantity) {
+    global $pdo;
+    
+    // Check if item already exists
+    $stmt = $pdo->prepare("SELECT * FROM cart_items WHERE user_id = ? AND event_id = ?");
+    $stmt->execute([$user_id, $event_id]);
+    $existing = $stmt->fetch();
+    
+    if ($existing) {
+        // Update quantity
+        $stmt = $pdo->prepare("UPDATE cart_items SET quantity = quantity + ? WHERE id = ?");
+        return $stmt->execute([$quantity, $existing['id']]);
+    } else {
+        // Insert new item
+        $stmt = $pdo->prepare("INSERT INTO cart_items (user_id, event_id, quantity) VALUES (?, ?, ?)");
+        return $stmt->execute([$user_id, $event_id, $quantity]);
+    }
+}
+
+function remove_from_cart($cart_item_id) {
+    global $pdo;
+    
+    $stmt = $pdo->prepare("DELETE FROM cart_items WHERE id = ?");
+    return $stmt->execute([$cart_item_id]);
+}
+
+function clear_cart($user_id) {
+    global $pdo;
+    
+    $stmt = $pdo->prepare("DELETE FROM cart_items WHERE user_id = ?");
+    return $stmt->execute([$user_id]);
+}
+
+// Booking functions
+function create_booking($data) {
+    global $pdo;
+    
+    $ticket_number = 'TK' . time() . rand(1000, 9999);
+    
+    $sql = "INSERT INTO bookings (user_id, event_id, quantity, total_amount, 
+            attendee_name, attendee_email, attendee_phone, ticket_number) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    
+    $stmt = $pdo->prepare($sql);
+    $result = $stmt->execute([
+        $data['user_id'], $data['event_id'], $data['quantity'],
+        $data['total_amount'], $data['attendee_name'], $data['attendee_email'],
+        $data['attendee_phone'], $ticket_number
+    ]);
+    
+    if ($result) {
+        return $pdo->lastInsertId();
+    }
+    return false;
+}
+
+function get_user_bookings($user_id) {
+    global $pdo;
+    
+    $stmt = $pdo->prepare("SELECT b.*, e.title, e.date, e.venue 
+                          FROM bookings b 
+                          JOIN events e ON b.event_id = e.id 
+                          WHERE b.user_id = ? 
+                          ORDER BY b.created_at DESC");
+    $stmt->execute([$user_id]);
+    return $stmt->fetchAll();
+}
+
+// Utility functions
+function sanitize_input($input) {
+    return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
+}
+
+function format_currency($amount) {
+    return 'XAF ' . number_format($amount, 0);
+}
+
+function format_date($date) {
+    return date('M j, Y \a\t g:i A', strtotime($date));
+}
+
+function redirect($page) {
+    header("Location: index.php?page={$page}");
+    exit;
+}
+
+function show_message($message, $type = 'info') {
+    $_SESSION['flash_message'] = $message;
+    $_SESSION['flash_type'] = $type;
+}
+
+function get_flash_message() {
+    if (isset($_SESSION['flash_message'])) {
+        $message = $_SESSION['flash_message'];
+        $type = $_SESSION['flash_type'] ?? 'info';
+        unset($_SESSION['flash_message'], $_SESSION['flash_type']);
+        return ['message' => $message, 'type' => $type];
+    }
+    return null;
+}
+
+// Categories and cities for Cameroon
+function get_categories() {
+    return ['music', 'business', 'technology', 'arts', 'sports', 'food'];
+}
+
+function get_cities() {
+    return [
+        'Douala', 'Yaounde', 'Bamenda', 'Bafoussam', 'Garoua', 'Maroua',
+        'Ngaoundere', 'Bertoua', 'Ebolowa', 'Kribi', 'Limbe', 'Buea'
+    ];
+}
+
+function get_regions() {
+    return [
+        'Centre', 'Littoral', 'West', 'Northwest', 'Southwest', 
+        'North', 'Far North', 'Adamawa', 'East', 'South'
+    ];
+}
+?>
