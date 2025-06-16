@@ -147,12 +147,25 @@ $total_spent = array_sum(array_column($user_bookings, 'total_amount'));
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <a href="index.php?page=event-details&id=<?php echo $booking['event_id']; ?>" 
-                                   class="text-indigo-600 hover:text-indigo-900">View Event</a>
-                                <?php if ($booking['status'] === 'confirmed'): ?>
-                                    <span class="text-gray-300 mx-2">|</span>
-                                    <a href="#" class="text-green-600 hover:text-green-900">Download Ticket</a>
-                                <?php endif; ?>
+                                <div class="flex space-x-2">
+                                    <a href="index.php?page=event-details&id=<?php echo $booking['event_id']; ?>" 
+                                       class="text-indigo-600 hover:text-indigo-900">View Event</a>
+                                    <?php if ($booking['status'] === 'confirmed'): ?>
+                                        <span class="text-gray-300">|</span>
+                                        <a href="index.php?action=download_ticket&booking_id=<?php echo $booking['id']; ?>" 
+                                           class="text-green-600 hover:text-green-900" target="_blank">
+                                            <i class="fas fa-download mr-1"></i>Download
+                                        </a>
+                                        <span class="text-gray-300">|</span>
+                                        <a href="#" onclick="showQRCode(<?php echo $booking['id']; ?>)" 
+                                           class="text-purple-600 hover:text-purple-900">
+                                            <i class="fas fa-qrcode mr-1"></i>QR Code
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="text-gray-300">|</span>
+                                        <span class="text-gray-500">Pending Payment</span>
+                                    <?php endif; ?>
+                                </div>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -162,3 +175,59 @@ $total_spent = array_sum(array_column($user_bookings, 'total_amount'));
         <?php endif; ?>
     </div>
 </div>
+
+<!-- QR Code Modal -->
+<div id="qrModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3 text-center">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Ticket QR Code</h3>
+            <div id="qrCodeContainer" class="flex justify-center mb-4">
+                <!-- QR Code will be inserted here -->
+            </div>
+            <p class="text-sm text-gray-600 mb-4">Show this QR code at the event entrance</p>
+            <div class="flex justify-center space-x-4">
+                <button onclick="downloadQRCode()" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
+                    <i class="fas fa-download mr-2"></i>Download QR
+                </button>
+                <button onclick="closeQRModal()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showQRCode(bookingId) {
+    // Generate QR code using a simple library or service
+    const qrCodeData = `EVENTZON-TICKET-${bookingId}-${Date.now()}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCodeData)}`;
+    
+    document.getElementById('qrCodeContainer').innerHTML = `
+        <img src="${qrCodeUrl}" alt="QR Code" class="border border-gray-300 rounded">
+    `;
+    
+    document.getElementById('qrModal').classList.remove('hidden');
+}
+
+function closeQRModal() {
+    document.getElementById('qrModal').classList.add('hidden');
+}
+
+function downloadQRCode() {
+    const qrImage = document.querySelector('#qrCodeContainer img');
+    if (qrImage) {
+        const link = document.createElement('a');
+        link.download = 'ticket-qr-code.png';
+        link.href = qrImage.src;
+        link.click();
+    }
+}
+
+// Close modal when clicking outside
+document.getElementById('qrModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeQRModal();
+    }
+});
+</script>
