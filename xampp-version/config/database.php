@@ -1,12 +1,13 @@
 <?php
 // Database configuration for XAMPP
 define('DB_HOST', 'localhost');
+define('DB_PORT', '3307');
 define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_NAME', 'eventzon');
 
 try {
-    $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8", DB_USER, DB_PASS);
+    $pdo = new PDO("mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8", DB_USER, DB_PASS);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
@@ -15,7 +16,7 @@ try {
 
 // Create database if it doesn't exist
 try {
-    $pdo_no_db = new PDO("mysql:host=" . DB_HOST . ";charset=utf8", DB_USER, DB_PASS);
+    $pdo_no_db = new PDO("mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";charset=utf8", DB_USER, DB_PASS);
     $pdo_no_db->exec("CREATE DATABASE IF NOT EXISTS " . DB_NAME);
     $pdo_no_db = null;
 } catch (PDOException $e) {
