@@ -15,9 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import Header from "@/components/header";
-import Footer from "@/components/footer";
-import CartSidebar from "@/components/cart-sidebar";
+import AdminLayout from "./admin-layout";
 import type { EventWithOrganizer, InsertEvent } from "@shared/schema";
 import { insertEventSchema } from "@shared/schema";
 
