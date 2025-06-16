@@ -3,49 +3,54 @@ if (is_logged_in()) {
     redirect('dashboard');
 }
 
-$error = '';
-$success = '';
-
 if ($_POST) {
     $name = sanitize_input($_POST['name'] ?? '');
     $email = sanitize_input($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
     
-    if (empty($name) || empty($email) || empty($password) || empty($confirm_password)) {
-        $error = 'Please fill in all fields';
+    if (empty($name) || empty($email) || empty($password)) {
+        show_message('Please fill in all fields', 'error');
     } elseif ($password !== $confirm_password) {
-        $error = 'Passwords do not match';
+        show_message('Passwords do not match', 'error');
     } elseif (strlen($password) < 6) {
-        $error = 'Password must be at least 6 characters long';
+        show_message('Password must be at least 6 characters', 'error');
     } else {
         // Check if email already exists
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
         
         if ($stmt->fetch()) {
-            $error = 'Email already exists';
+            show_message('Email already registered', 'error');
         } else {
-            // Create user
+            // Create new user
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("INSERT INTO users (name, email, password) VALUES (?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, 'user')");
             
             if ($stmt->execute([$name, $email, $hashed_password])) {
-                $success = 'Account created successfully! You can now login.';
+                $user_id = $pdo->lastInsertId();
+                
+                // Auto-login the new user
+                $_SESSION['user_id'] = $user_id;
+                $_SESSION['user_name'] = $name;
+                $_SESSION['user_email'] = $email;
+                $_SESSION['user_role'] = 'user';
+                
+                show_message('Registration successful! Welcome to EventZon!', 'success');
+                redirect('dashboard');
             } else {
-                $error = 'Failed to create account. Please try again.';
+                show_message('Registration failed. Please try again.', 'error');
             }
         }
     }
 }
+
+$flash = get_flash_message();
 ?>
 
 <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8">
         <div>
-            <div class="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-indigo-100">
-                <i class="fas fa-user-plus text-indigo-600 text-xl"></i>
-            </div>
             <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
                 Create your account
             </h2>
@@ -57,51 +62,41 @@ if ($_POST) {
             </p>
         </div>
         
+        <?php if ($flash): ?>
+            <div class="rounded-md p-4 <?php echo $flash['type'] === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'; ?>">
+                <?php echo htmlspecialchars($flash['message']); ?>
+            </div>
+        <?php endif; ?>
+        
         <form class="mt-8 space-y-6" method="POST">
-            <?php if ($error): ?>
-                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                    <?php echo htmlspecialchars($error); ?>
-                </div>
-            <?php endif; ?>
-            
-            <?php if ($success): ?>
-                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                    <?php echo htmlspecialchars($success); ?>
-                    <div class="mt-2">
-                        <a href="index.php?page=login" class="font-medium underline">Click here to login</a>
-                    </div>
-                </div>
-            <?php endif; ?>
-            
             <div class="space-y-4">
                 <div>
                     <label for="name" class="block text-sm font-medium text-gray-700">Full Name</label>
                     <input id="name" name="name" type="text" required 
-                           value="<?php echo htmlspecialchars($_POST['name'] ?? ''); ?>"
-                           class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                           placeholder="Enter your full name">
+                           class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
+                           placeholder="Enter your full name"
+                           value="<?php echo htmlspecialchars($_POST['name'] ?? ''); ?>">
                 </div>
                 
                 <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700">Email address</label>
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
                     <input id="email" name="email" type="email" required 
-                           value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>"
-                           class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                           placeholder="Enter your email">
+                           class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
+                           placeholder="Enter your email address"
+                           value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>">
                 </div>
                 
                 <div>
                     <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-                    <input id="password" name="password" type="password" required
-                           class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                    <input id="password" name="password" type="password" required 
+                           class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
                            placeholder="Enter your password">
-                    <p class="mt-1 text-sm text-gray-500">Must be at least 6 characters long</p>
                 </div>
                 
                 <div>
                     <label for="confirm_password" class="block text-sm font-medium text-gray-700">Confirm Password</label>
-                    <input id="confirm_password" name="confirm_password" type="password" required
-                           class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                    <input id="confirm_password" name="confirm_password" type="password" required 
+                           class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
                            placeholder="Confirm your password">
                 </div>
             </div>
@@ -109,7 +104,6 @@ if ($_POST) {
             <div>
                 <button type="submit" 
                         class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    <i class="fas fa-user-plus mr-2"></i>
                     Create Account
                 </button>
             </div>

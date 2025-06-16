@@ -96,6 +96,20 @@ function get_cart_items($user_id) {
 function add_to_cart($user_id, $event_id, $quantity) {
     global $pdo;
     
+    // Verify user exists
+    $user_check = $pdo->prepare("SELECT id FROM users WHERE id = ?");
+    $user_check->execute([$user_id]);
+    if (!$user_check->fetch()) {
+        return false; // User doesn't exist
+    }
+    
+    // Verify event exists
+    $event_check = $pdo->prepare("SELECT id FROM events WHERE id = ?");
+    $event_check->execute([$event_id]);
+    if (!$event_check->fetch()) {
+        return false; // Event doesn't exist
+    }
+    
     // Check if item already exists
     $stmt = $pdo->prepare("SELECT * FROM cart_items WHERE user_id = ? AND event_id = ?");
     $stmt->execute([$user_id, $event_id]);
