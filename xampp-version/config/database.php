@@ -1,26 +1,26 @@
 <?php
 // Database configuration for XAMPP
 define('DB_HOST', 'localhost');
-define('DB_PORT', '3307');
 define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_NAME', 'eventzon');
 
+// First, try to create database if it doesn't exist
 try {
-    $pdo = new PDO("mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8", DB_USER, DB_PASS);
+    $pdo_server = new PDO("mysql:host=" . DB_HOST . ";charset=utf8", DB_USER, DB_PASS);
+    $pdo_server->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo_server->exec("CREATE DATABASE IF NOT EXISTS " . DB_NAME);
+} catch (PDOException $e) {
+    // Continue if database creation fails - might already exist
+}
+
+// Connect to the specific database
+try {
+    $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8", DB_USER, DB_PASS);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    die("Database connection failed: " . $e->getMessage());
-}
-
-// Create database if it doesn't exist
-try {
-    $pdo_no_db = new PDO("mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";charset=utf8", DB_USER, DB_PASS);
-    $pdo_no_db->exec("CREATE DATABASE IF NOT EXISTS " . DB_NAME);
-    $pdo_no_db = null;
-} catch (PDOException $e) {
-    // Database might already exist
+    die("Database connection failed: " . $e->getMessage() . "<br>Make sure XAMPP MySQL is running!");
 }
 
 // Create tables if they don't exist

@@ -126,6 +126,17 @@ function add_to_cart($user_id, $event_id, $quantity) {
     }
 }
 
+function update_cart_item($cart_item_id, $quantity) {
+    global $pdo;
+    
+    if ($quantity <= 0) {
+        return remove_from_cart($cart_item_id);
+    }
+    
+    $stmt = $pdo->prepare("UPDATE cart_items SET quantity = ? WHERE id = ?");
+    return $stmt->execute([$quantity, $cart_item_id]);
+}
+
 function remove_from_cart($cart_item_id) {
     global $pdo;
     
@@ -227,22 +238,55 @@ function get_regions() {
     ];
 }
 
-// Missing functions for cart and admin functionality
-function update_cart_item($cart_item_id, $quantity) {
+// Additional functions for admin functionality
+
+function get_booking_with_event($booking_id, $user_id = null) {
     global $pdo;
     
-    $stmt = $pdo->prepare("UPDATE cart_items SET quantity = ? WHERE id = ?");
-    return $stmt->execute([$quantity, $cart_item_id]);
+    $sql = "
+        SELECT b.*, e.title as event_title, e.date as event_date, e.venue, e.price
+        FROM bookings b 
+        JOIN events e ON b.event_id = e.id 
+        WHERE b.id = ?
+    ";
+    
+    $params = [$booking_id];
+    
+    if ($user_id) {
+        $sql .= " AND b.user_id = ?";
+        $params[] = $user_id;
+    }
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    return $stmt->fetch();
 }
 
-function get_booking_with_event($booking_id, $user_id) {
-    global $pdo;
+function generate_ticket_pdf($booking) {
+    // For XAMPP version, generate HTML ticket
+    $html = "
+    <div style='border: 2px solid #333; padding: 20px; font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto;'>
+        <h2 style='text-align: center; color: #4F46E5; margin-bottom: 20px;'>EventZon Ticket</h2>
+        <hr style='border: 1px solid #ddd;'>
+        <div style='margin: 15px 0;'>
+            <p><strong>Event:</strong> {$booking['event_title']}</p>
+            <p><strong>Date:</strong> " . date('F j, Y g:i A', strtotime($booking['event_date'])) . "</p>
+            <p><strong>Venue:</strong> {$booking['venue']}</p>
+            <p><strong>Attendee:</strong> {$booking['attendee_name']}</p>
+            <p><strong>Email:</strong> {$booking['attendee_email']}</p>
+            <p><strong>Phone:</strong> {$booking['attendee_phone']}</p>
+            <p><strong>Quantity:</strong> {$booking['quantity']} ticket(s)</p>
+            <p><strong>Total Amount:</strong> " . number_format($booking['total_amount']) . " FCFA</p>
+            <p><strong>Ticket Number:</strong> <code>{$booking['ticket_number']}</code></p>
+            <p><strong>Status:</strong> " . ucfirst($booking['status']) . "</p>
+        </div>
+        <hr style='border: 1px solid #ddd;'>
+        <p style='text-align: center; font-size: 12px; color: #666;'>Present this ticket at the venue entrance</p>
+        <p style='text-align: center; font-size: 10px; color: #999;'>EventZon - Cameroon Event Management Platform</p>
+    </div>";
     
-    $stmt = $pdo->prepare("SELECT b.*, e.title, e.event_date as date, e.venue, e.city 
-                          FROM bookings b 
-                          JOIN events e ON b.event_id = e.id 
-                          WHERE b.id = ? AND b.user_id = ?");
-    $stmt->execute([$booking_id, $user_id]);
+    return $html;
+}
     return $stmt->fetch();
 }
 

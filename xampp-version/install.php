@@ -1,228 +1,208 @@
-<?php
-// EventZon XAMPP Installation Script
-session_start();
-
-$step = $_GET['step'] ?? 1;
-$errors = [];
-$success = [];
-
-// Step 1: Check requirements
-if ($step == 1) {
-    $php_version = version_compare(PHP_VERSION, '7.4.0', '>=');
-    $pdo_available = extension_loaded('pdo');
-    $pdo_mysql = extension_loaded('pdo_mysql');
-    
-    if (!$php_version) $errors[] = 'PHP 7.4 or higher required. Current: ' . PHP_VERSION;
-    if (!$pdo_available) $errors[] = 'PDO extension required';
-    if (!$pdo_mysql) $errors[] = 'PDO MySQL extension required';
-}
-
-// Step 2: Database setup
-if ($step == 2 && $_POST) {
-    $db_host = $_POST['db_host'] ?? 'localhost';
-    $db_user = $_POST['db_user'] ?? 'root';
-    $db_pass = $_POST['db_pass'] ?? '';
-    $db_name = $_POST['db_name'] ?? 'eventzon';
-    
-    try {
-        // Test connection
-        $pdo = new PDO("mysql:host=$db_host", $db_user, $db_pass);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        // Create database
-        $pdo->exec("CREATE DATABASE IF NOT EXISTS $db_name");
-        $pdo->exec("USE $db_name");
-        
-        // Create tables
-        $sql = file_get_contents('config/database_schema.sql');
-        if ($sql) {
-            $pdo->exec($sql);
-            $success[] = 'Database and tables created successfully';
-            
-            // Update config file
-            $config_content = "<?php\ndefine('DB_HOST', '$db_host');\ndefine('DB_USER', '$db_user');\ndefine('DB_PASS', '$db_pass');\ndefine('DB_NAME', '$db_name');\n?>";
-            file_put_contents('config/db_config.php', $config_content);
-            
-        } else {
-            $errors[] = 'Could not load database schema';
-        }
-    } catch (PDOException $e) {
-        $errors[] = 'Database error: ' . $e->getMessage();
-    }
-}
-
-// Step 3: Admin user creation
-if ($step == 3 && $_POST) {
-    require_once 'config/database.php';
-    
-    $admin_name = $_POST['admin_name'] ?? '';
-    $admin_email = $_POST['admin_email'] ?? '';
-    $admin_password = $_POST['admin_password'] ?? '';
-    
-    if (empty($admin_name) || empty($admin_email) || empty($admin_password)) {
-        $errors[] = 'All fields are required';
-    } else {
-        try {
-            $hashed_password = password_hash($admin_password, PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, 'admin')");
-            if ($stmt->execute([$admin_name, $admin_email, $hashed_password])) {
-                $success[] = 'Admin user created successfully';
-                
-                // Create installation complete marker
-                file_put_contents('.installed', date('Y-m-d H:i:s'));
-            } else {
-                $errors[] = 'Failed to create admin user';
-            }
-        } catch (PDOException $e) {
-            $errors[] = 'Database error: ' . $e->getMessage();
-        }
-    }
-}
-?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EventZon Installation</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <title>EventZon XAMPP Installation</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .success { background: #d4edda; color: #155724; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .error { background: #f8d7da; color: #721c24; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .info { background: #d1ecf1; color: #0c5460; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .btn { background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 5px 10px 0; }
+        .btn-success { background: #28a745; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        pre { background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    </style>
 </head>
-<body class="bg-gray-50">
-    <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-md w-full space-y-8">
-            <div class="text-center">
-                <h2 class="text-3xl font-bold text-gray-900">EventZon Installation</h2>
-                <p class="text-gray-600">Step <?php echo $step; ?> of 3</p>
-            </div>
+<body>
+    <h1>EventZon XAMPP Installation</h1>
+    
+    <?php
+    $step = $_GET['step'] ?? 'check';
+    
+    if ($step === 'check') {
+        echo '<div class="info"><strong>Step 1:</strong> Checking XAMPP environment...</div>';
+        
+        // Check if we can connect to MySQL
+        try {
+            $pdo = new PDO("mysql:host=localhost;charset=utf8", "root", "");
+            echo '<div class="success">✓ MySQL connection successful</div>';
             
-            <?php if ($errors): ?>
-                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                    <?php foreach ($errors as $error): ?>
-                        <p><?php echo htmlspecialchars($error); ?></p>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
+            // Check if database exists
+            $result = $pdo->query("SHOW DATABASES LIKE 'eventzon'");
+            if ($result->rowCount() > 0) {
+                echo '<div class="info">Database "eventzon" already exists</div>';
+            } else {
+                echo '<div class="info">Database "eventzon" will be created</div>';
+            }
             
-            <?php if ($success): ?>
-                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                    <?php foreach ($success as $msg): ?>
-                        <p><?php echo htmlspecialchars($msg); ?></p>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
+            echo '<a href="?step=install" class="btn">Continue Installation</a>';
             
-            <?php if ($step == 1): ?>
-                <div class="bg-white rounded-lg shadow p-6">
-                    <h3 class="text-lg font-semibold mb-4">System Requirements</h3>
-                    <div class="space-y-2">
-                        <div class="flex items-center">
-                            <span class="<?php echo $php_version ? 'text-green-600' : 'text-red-600'; ?>">
-                                <?php echo $php_version ? '✓' : '✗'; ?>
-                            </span>
-                            <span class="ml-2">PHP 7.4+ (Current: <?php echo PHP_VERSION; ?>)</span>
-                        </div>
-                        <div class="flex items-center">
-                            <span class="<?php echo $pdo_available ? 'text-green-600' : 'text-red-600'; ?>">
-                                <?php echo $pdo_available ? '✓' : '✗'; ?>
-                            </span>
-                            <span class="ml-2">PDO Extension</span>
-                        </div>
-                        <div class="flex items-center">
-                            <span class="<?php echo $pdo_mysql ? 'text-green-600' : 'text-red-600'; ?>">
-                                <?php echo $pdo_mysql ? '✓' : '✗'; ?>
-                            </span>
-                            <span class="ml-2">PDO MySQL Extension</span>
-                        </div>
-                    </div>
-                    
-                    <?php if (empty($errors)): ?>
-                        <div class="mt-6">
-                            <a href="?step=2" class="w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 inline-block text-center">
-                                Continue to Database Setup
-                            </a>
-                        </div>
-                    <?php endif; ?>
-                </div>
+        } catch (PDOException $e) {
+            echo '<div class="error">❌ MySQL connection failed: ' . $e->getMessage() . '</div>';
+            echo '<div class="info">';
+            echo '<strong>Please ensure:</strong><br>';
+            echo '1. XAMPP is running<br>';
+            echo '2. MySQL service is started<br>';
+            echo '3. MySQL is running on default port 3306<br>';
+            echo '</div>';
+        }
+        
+    } elseif ($step === 'install') {
+        echo '<div class="info"><strong>Step 2:</strong> Installing database and sample data...</div>';
+        
+        try {
+            // Connect to MySQL
+            $pdo = new PDO("mysql:host=localhost;charset=utf8", "root", "");
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             
-            <?php elseif ($step == 2): ?>
-                <form method="POST" class="bg-white rounded-lg shadow p-6 space-y-4">
-                    <h3 class="text-lg font-semibold mb-4">Database Configuration</h3>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Database Host</label>
-                        <input type="text" name="db_host" value="localhost" required
-                               class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Database User</label>
-                        <input type="text" name="db_user" value="root" required
-                               class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Database Password</label>
-                        <input type="password" name="db_pass" 
-                               class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Database Name</label>
-                        <input type="text" name="db_name" value="eventzon" required
-                               class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md">
-                    </div>
-                    
-                    <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">
-                        Setup Database
-                    </button>
-                </form>
+            // Create database
+            $pdo->exec("CREATE DATABASE IF NOT EXISTS eventzon");
+            echo '<div class="success">✓ Database created</div>';
+            
+            // Use the database
+            $pdo->exec("USE eventzon");
+            
+            // Create tables
+            $sql = "
+            CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                avatar_url VARCHAR(500),
+                role ENUM('user', 'admin') DEFAULT 'user',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS events (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                description TEXT,
+                date DATETIME NOT NULL,
+                venue VARCHAR(255) NOT NULL,
+                price DECIMAL(10,2) NOT NULL,
+                available_tickets INT NOT NULL,
+                category VARCHAR(100) NOT NULL,
+                city VARCHAR(100) NOT NULL,
+                region VARCHAR(100) NOT NULL,
+                image_url VARCHAR(500),
+                organizer_id INT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (organizer_id) REFERENCES users(id) ON DELETE SET NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS bookings (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                event_id INT NOT NULL,
+                quantity INT NOT NULL,
+                total_amount DECIMAL(10,2) NOT NULL,
+                status ENUM('pending', 'confirmed', 'cancelled') DEFAULT 'pending',
+                attendee_name VARCHAR(255) NOT NULL,
+                attendee_email VARCHAR(255) NOT NULL,
+                attendee_phone VARCHAR(20),
+                ticket_number VARCHAR(50) UNIQUE,
+                qr_code TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS cart_items (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                event_id INT NOT NULL,
+                quantity INT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+            );
+            ";
+            
+            $pdo->exec($sql);
+            echo '<div class="success">✓ Tables created</div>';
+            
+            // Check if sample data exists
+            $userCount = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
+            
+            if ($userCount == 0) {
+                // Insert sample users
+                $adminPass = password_hash('admin123', PASSWORD_DEFAULT);
+                $userPass = password_hash('password', PASSWORD_DEFAULT);
                 
-                <?php if ($success): ?>
-                    <div class="text-center">
-                        <a href="?step=3" class="bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700">
-                            Continue to Admin Setup
-                        </a>
-                    </div>
-                <?php endif; ?>
-            
-            <?php elseif ($step == 3): ?>
-                <form method="POST" class="bg-white rounded-lg shadow p-6 space-y-4">
-                    <h3 class="text-lg font-semibold mb-4">Create Admin User</h3>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Full Name</label>
-                        <input type="text" name="admin_name" required
-                               class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Email Address</label>
-                        <input type="email" name="admin_email" required
-                               class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md">
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Password</label>
-                        <input type="password" name="admin_password" required minlength="6"
-                               class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md">
-                    </div>
-                    
-                    <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700">
-                        Create Admin User
-                    </button>
-                </form>
+                $pdo->exec("INSERT INTO users (email, name, password, role) VALUES
+                    ('admin@eventzon.cm', 'EventZon Admin', '$adminPass', 'admin'),
+                    ('organizer1@cameroon.cm', 'Cameroon Cultural Center', '$userPass', 'user'),
+                    ('organizer2@yaounde.cm', 'Yaounde Events Ltd', '$userPass', 'user'),
+                    ('organizer3@douala.cm', 'Douala Business Hub', '$userPass', 'user')
+                ");
                 
-                <?php if ($success): ?>
-                    <div class="bg-white rounded-lg shadow p-6 text-center">
-                        <h3 class="text-lg font-semibold text-green-600 mb-4">Installation Complete!</h3>
-                        <p class="text-gray-600 mb-4">EventZon has been successfully installed.</p>
-                        <a href="index.php" class="bg-indigo-600 text-white py-2 px-6 rounded hover:bg-indigo-700">
-                            Go to Application
-                        </a>
-                    </div>
-                <?php endif; ?>
-            <?php endif; ?>
-        </div>
-    </div>
+                echo '<div class="success">✓ Sample users created</div>';
+                
+                // Insert sample events
+                $events = [
+                    ['Festival Ngondo 2024', 'Traditional Sawa water festival with cultural dances and exhibitions', '2024-12-15 10:00:00', 'Rive Wouri, Douala', 5000, 2000, 'arts', 'Douala', 'Littoral', 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3', 2],
+                    ['Cameroon Tech Summit 2024', 'Leading technology conference for Central Africa', '2024-11-20 09:00:00', 'Hilton Yaounde', 25000, 500, 'technology', 'Yaounde', 'Centre', 'https://images.unsplash.com/photo-1540575467063-178a50c2df87', 3],
+                    ['Bamenda Cultural Festival', 'Northwest Region cultural celebration', '2024-10-25 14:00:00', 'Bamenda Commercial Avenue', 3000, 1500, 'arts', 'Bamenda', 'Northwest', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d', 2],
+                    ['Coffee & Cocoa Expo', 'International trade exhibition', '2024-11-10 08:00:00', 'Palais des Congrès, Yaounde', 15000, 800, 'business', 'Yaounde', 'Centre', 'https://images.unsplash.com/photo-1447933601403-0c6688de566e', 3],
+                    ['Mount Cameroon Race', 'Annual mountain race to the summit', '2024-02-10 06:00:00', 'Buea Mountain Club', 12000, 300, 'sports', 'Buea', 'Southwest', 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256', 2],
+                    ['Kribi Jazz Festival', 'International jazz festival on the coast', '2024-12-28 18:00:00', 'Kribi Beach Resort', 8000, 1200, 'music', 'Kribi', 'South', 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f', 2],
+                    ['Bafoussam Agribusiness Conference', 'Agricultural innovation conference', '2024-09-15 09:00:00', 'Centre de Conférences Bafoussam', 10000, 600, 'business', 'Bafoussam', 'West', 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b', 4],
+                    ['Limbe Arts Festival', 'Southwest cultural arts festival', '2024-08-17 16:00:00', 'Limbe Botanic Garden', 4000, 1000, 'arts', 'Limbe', 'Southwest', 'https://images.unsplash.com/photo-1471919743851-c4df8b6ee133', 2],
+                    ['Garoua Business Forum', 'Northern business networking event', '2024-10-05 08:30:00', 'Hôtel Relais Saint-Hubert', 20000, 400, 'business', 'Garoua', 'North', 'https://images.unsplash.com/photo-1515187029135-18ee286d815b', 4],
+                    ['Makossa Music Festival', 'Celebration of Cameroon music', '2024-07-14 19:00:00', 'Palais des Sports de Douala', 7500, 3000, 'music', 'Douala', 'Littoral', 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a', 2]
+                ];
+                
+                $stmt = $pdo->prepare("INSERT INTO events (title, description, date, venue, price, available_tickets, category, city, region, image_url, organizer_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                
+                foreach ($events as $event) {
+                    $stmt->execute($event);
+                }
+                
+                echo '<div class="success">✓ 10 sample events created</div>';
+                
+                // Create sample bookings
+                $pdo->exec("INSERT INTO bookings (user_id, event_id, quantity, total_amount, status, attendee_name, attendee_email, attendee_phone, ticket_number) VALUES
+                    (1, 1, 2, 10000, 'confirmed', 'John Doe', 'john@example.com', '+237123456789', 'TK001'),
+                    (2, 2, 1, 25000, 'confirmed', 'Marie Ngozi', 'marie@example.com', '+237987654321', 'TK002'),
+                    (3, 3, 3, 9000, 'pending', 'Paul Biya Jr', 'paul@example.com', '+237555123456', 'TK003')
+                ");
+                
+                echo '<div class="success">✓ Sample bookings created</div>';
+            } else {
+                echo '<div class="info">Sample data already exists</div>';
+            }
+            
+            echo '<div class="success"><h2>🎉 Installation Complete!</h2></div>';
+            
+            echo '<div class="info">';
+            echo '<h3>Login Credentials:</h3>';
+            echo '<strong>Admin:</strong> admin@eventzon.cm / admin123<br>';
+            echo '<strong>User:</strong> organizer1@cameroon.cm / password';
+            echo '</div>';
+            
+            echo '<a href="index.php" class="btn btn-success">Go to Homepage</a>';
+            echo '<a href="admin/index.php" class="btn btn-warning">Admin Panel</a>';
+            
+        } catch (PDOException $e) {
+            echo '<div class="error">❌ Installation failed: ' . $e->getMessage() . '</div>';
+            echo '<a href="?step=check" class="btn">Try Again</a>';
+        }
+    }
+    ?>
+    
+    <hr>
+    <h3>Features Included:</h3>
+    <ul>
+        <li>✅ Enhanced checkout with payment methods</li>
+        <li>✅ Booking dashboard with QR codes</li>
+        <li>✅ Ticket download functionality</li>
+        <li>✅ Complete admin panel</li>
+        <li>✅ Event management system</li>
+        <li>✅ CSV export capabilities</li>
+        <li>✅ 10 authentic Cameroon events</li>
+    </ul>
 </body>
 </html>
