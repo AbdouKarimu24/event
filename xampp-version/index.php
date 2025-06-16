@@ -5,6 +5,8 @@ require_once 'includes/functions.php';
 
 // Handle ticket download action
 if (isset($_GET['action']) && $_GET['action'] === 'download_ticket' && isset($_GET['booking_id'])) {
+    require_once 'includes/functions.php';
+    
     if (!is_logged_in()) {
         redirect('login');
     }

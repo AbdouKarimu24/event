@@ -124,6 +124,12 @@ EventZon is a comprehensive event booking and management platform built for Came
 4. Deployment: Replit autoscale deployment with health checks
 
 ## Changelog
+- June 16, 2025. XAMPP version enhanced with complete admin panel functionality
+  - Added comprehensive checkout process with payment method selection
+  - Implemented booking history dashboard with QR code generation and ticket downloads
+  - Created full admin panel with event management, booking oversight, and analytics
+  - Added 10 authentic Cameroon events as sample data
+  - Implemented CSV export and detailed reporting features
 - June 15, 2025. Initial setup
 
 ## User Preferences
