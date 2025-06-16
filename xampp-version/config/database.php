@@ -93,4 +93,10 @@ try {
 } catch (PDOException $e) {
     error_log("Error creating tables: " . $e->getMessage());
 }
+
+// Function for admin panel compatibility
+function getDbConnection() {
+    global $pdo;
+    return $pdo;
+}
 ?>

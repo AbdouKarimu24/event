@@ -3,6 +3,24 @@ session_start();
 require_once 'config/database.php';
 require_once 'includes/functions.php';
 
+// Handle ticket download action
+if (isset($_GET['action']) && $_GET['action'] === 'download_ticket' && isset($_GET['booking_id'])) {
+    if (!is_logged_in()) {
+        redirect('login');
+    }
+    
+    $booking_id = (int)$_GET['booking_id'];
+    $booking = get_booking_with_event($booking_id, $_SESSION['user_id']);
+    
+    if ($booking && $booking['status'] === 'confirmed') {
+        generate_ticket_pdf($booking);
+        exit;
+    } else {
+        show_message('Ticket not found or not confirmed', 'error');
+        redirect('dashboard');
+    }
+}
+
 // Get current page
 $page = $_GET['page'] ?? 'home';
 $allowed_pages = ['home', 'events', 'event-details', 'cart', 'dashboard', 'login', 'register'];

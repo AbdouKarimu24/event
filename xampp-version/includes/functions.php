@@ -212,4 +212,68 @@ function get_regions() {
         'North', 'Far North', 'Adamawa', 'East', 'South'
     ];
 }
+
+// Missing functions for cart and admin functionality
+function update_cart_item($cart_item_id, $quantity) {
+    global $pdo;
+    
+    $stmt = $pdo->prepare("UPDATE cart_items SET quantity = ? WHERE id = ?");
+    return $stmt->execute([$quantity, $cart_item_id]);
+}
+
+function get_booking_with_event($booking_id, $user_id) {
+    global $pdo;
+    
+    $stmt = $pdo->prepare("SELECT b.*, e.title, e.event_date as date, e.venue, e.city 
+                          FROM bookings b 
+                          JOIN events e ON b.event_id = e.id 
+                          WHERE b.id = ? AND b.user_id = ?");
+    $stmt->execute([$booking_id, $user_id]);
+    return $stmt->fetch();
+}
+
+function generate_ticket_pdf($booking) {
+    // Simple HTML ticket generation for now
+    $html = "
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Event Ticket</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .ticket { border: 2px solid #333; padding: 20px; max-width: 600px; }
+            .header { text-align: center; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
+            .details { margin: 20px 0; }
+            .qr-code { text-align: center; margin: 20px 0; }
+        </style>
+    </head>
+    <body>
+        <div class='ticket'>
+            <div class='header'>
+                <h1>EventZon Ticket</h1>
+                <h2>" . htmlspecialchars($booking['title']) . "</h2>
+            </div>
+            <div class='details'>
+                <p><strong>Ticket Number:</strong> " . htmlspecialchars($booking['ticket_number']) . "</p>
+                <p><strong>Attendee:</strong> " . htmlspecialchars($booking['attendee_name']) . "</p>
+                <p><strong>Date:</strong> " . date('F j, Y \a\t g:i A', strtotime($booking['date'])) . "</p>
+                <p><strong>Venue:</strong> " . htmlspecialchars($booking['venue']) . "</p>
+                <p><strong>City:</strong> " . htmlspecialchars($booking['city']) . "</p>
+                <p><strong>Quantity:</strong> " . $booking['quantity'] . " ticket(s)</p>
+                <p><strong>Total Amount:</strong> " . number_format($booking['total_amount']) . " XAF</p>
+            </div>
+            <div class='qr-code'>
+                <p>Show this ticket at the event entrance</p>
+                <div style='border: 1px solid #ccc; padding: 20px; display: inline-block;'>
+                    QR CODE: " . $booking['ticket_number'] . "
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>";
+    
+    header('Content-Type: text/html');
+    header('Content-Disposition: attachment; filename="ticket_' . $booking['ticket_number'] . '.html"');
+    echo $html;
+}
 ?>
